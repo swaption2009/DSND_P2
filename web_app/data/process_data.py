@@ -1,16 +1,36 @@
 import sys
-
+import pandas as pd
+from sqlalchemy import create_engine
 
 def load_data(messages_filepath, categories_filepath):
-    pass
+    messages = pd.read_csv(messages_filepath, index_col='id')
+    categories = pd.read_csv(categories_filepath, index_col='id')
+    return messages.join(categories, how='left')
 
 
 def clean_data(df):
-    pass
+    x = df['categories'].str.split(";", n=len(df['categories'].str.split(";").iloc[0]))
+    tmp_x = pd.DataFrame(x.values.tolist(), index= x.index)
+    
+    row = tmp_x.iloc[0]
+    tmp_x_colnames = [x[:-2] for x in row]
+    tmp_x.columns = tmp_x_colnames
+
+    for column in tmp_x:
+      tmp_x[column] = tmp_x[column].apply(lambda x: x[-1])
+      tmp_x[column] = tmp_x[column].astype(int)
+
+    df = df.drop(['categories'], axis=1)
+    df = df.join(tmp_x)
+    df = df.drop_duplicates(subset='message', keep='first')
+
+    return df
 
 
 def save_data(df, database_filename):
-    pass  
+  database_engine = 'sqlite:///' + database_filename
+  engine = create_engine(database_engine)
+  df.to_sql('InsertTableName', engine, index=False)
 
 
 def main():
